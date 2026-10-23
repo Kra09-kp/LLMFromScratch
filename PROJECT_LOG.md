@@ -105,9 +105,45 @@
     - Successfully prompted the trained model to answer questions about Kirti Pogra.
     - Observed structural emergence: Q&A formatting (`Q:` $\rightarrow$ `A:`), name recognition ("Kirti Pogra"), degree ("MCA"), career ("AI/ML Engineer"), and interests ("space", "documentaries").
 
-### Day 7: Model Export, Generation Refinement & Temperature Sampling (Next Up)
-- Temperature & top-k / nucleus (top-p) sampling controls to make generation crisper.
-- Saving and loading model checkpoints (`torch.save` / `torch.load`).
-- Modularizing code from notebooks into clean, reusable Python modules under `src/transformerfromscratch/`.
+### Day 7: Generation Refinement, Sampling Controls & Checkpointing (Completed! 🎉)
+- **Status**: Completed
+- **Accomplished**:
+  - **Temperature Sampling ($T$)**:
+    - Understood entropy scaling: dividing logits before softmax preserves the probability simplex ($\sum P_i = 1$) while controlling distribution sharpness.
+    - Handled zero temperature ($T = 0$) using deterministic `torch.argmax` greedy decoding without wasteful softmax/multinomial computation.
+  - **Top-$k$ Sampling & Logit Masking**:
+    - Mastered threshold cutoff mechanics: isolating top-$k$ scores via `torch.topk(last_token, k=top_k)`.
+    - Applied negative infinity masking (`masked_fill(last_token < cutoff, float("-inf"))`) so non-top-$k$ tokens receive zero probability mass ($e^{-\infty} = 0$).
+  - **Self-Contained Model Checkpointing**:
+    - Analyzed architecture serialization: saving raw weights (`state_dict`) vs fragile pickled classes.
+    - Demystified PyTorch 2.6+ `weights_only=True` security protocols and safe deserialization.
+    - Bundled model parameters, architecture hyperparameters (`ModelConfig`), and tokenization mappings (`string_to_int`, `int_to_string`) into a unified `.pt` checkpoint file (`transformer_model.pt`).
+    - Verified round-trip restoration and inference.
+
+---
+
+### Day 8: Scaling Up on Kaggle — Pre-training a Mini-LLM on GPU (Completed! 🏆)
+- **Status**: Completed
+- **Environment**: Kaggle NVIDIA Tesla T4 GPU (15 GB VRAM).
+- **Dataset**: `TinyStories` pre-training corpus (4,466,061 train tokens, 194,559 validation tokens).
+- **Tokenizer**: Pretrained GPT-2 BPE tokenizer via `tiktoken` ($V = 50,257$) with `<|endoftext|>` ($50,256$) story boundary delimiters.
+- **Architecture Scaled**:
+  - Parameters: $\sim 17.6\text{M}$
+  - `vocab_size = 50257`, `d_model = 256`, `max_seq_len = 256`, `num_heads = 4`, `num_layers = 6`, `dropout = 0.1`
+- **Accomplished**:
+  - **GPU Acceleration & Mixed Precision**:
+    - Dispatched batch streams and model weights directly to `cuda:0`.
+    - Integrated `torch.amp.autocast('cuda')` and `torch.amp.GradScaler('cuda')` to exploit Tensor Cores in 16-bit precision without gradient underflow.
+    - Optimized memory footprint with `optimizer.zero_grad(set_to_none=True)`.
+  - **Training Dynamics & Loss Trajectory**:
+    - Mathematical baseline matched theoretical entropy: $\ln(50257) \approx 10.82 \leftrightarrow 10.88$.
+    - Rapid convergence from **10.48 down to 1.97 train loss** and **2.21 val loss** (Perplexity dropped from $50,000 \rightarrow 7.38$).
+    - Zero severe overfitting; steady validation tracking.
+  - **Full Emergent Narrative Intelligence**:
+    - Generated syntactically flawless English stories with dialogue, quotation formatting, and character consistency (Lily, Mommy, Daddy).
+    - Demonstrated boundary token synthesis: emitting `<|endoftext|>` upon story completion and transitioning cleanly to new story prefixes.
+  - **Export**: Saved self-contained `tinystories_transformer_17m.pt` checkpoint to Kaggle working storage.
+
+
 
 
